@@ -5,8 +5,14 @@ array:
     .word 2, 1, 2, 1, 2
 target:
     .word 2 
+answer:
+    .word 1, 1
 err_msg:
     .string "malloc fail"
+assert_fail:
+    .string "assert fail"
+assert_success:
+    .string "assert success"
 .text
 main:
     jal create_default_list
@@ -16,6 +22,8 @@ main:
     jal remove_elements
     mv t1, s1 # store list head to t1
     jal print_list
+    mv t1, s1 # store list head to t1
+    jal assert_list
 exit:
     addi a7, x0 10 # exit
     ecall
@@ -34,33 +42,33 @@ create:
     sw s0, 4(sp)      # store the address of list head
     jal ra, malloc    # get memory for the next node
     bne a0, x0, exit_error  
-    lw s1, 0(t1)      # load arr[i]
+    lw s1, 0(t1)      # load array[i]
     addi t1, t1, 4    # i++
-    sw s1, 0(s0)      # node->value = arr[i]
+    sw s1, 0(s0)      # node->value = array[i]
     sw x0, 4(s0)      # node->next = NULL
     mv t2, s0         # prev = node
     addi s2, s2, 1    
     addi s0, s0, 8    
-    beq s2, t0, ret # check end condition in while loop
+    beq s2, t0, ret   # check end condition in for loop
 loop:   
     jal ra, malloc    # get memory for the next node
     bne a0, x0, exit_error  
-    lw s1, 0(t1)      # load arr[i]
+    lw s1, 0(t1)      # load array[i]
     addi t1, t1, 4    # i++
-    sw s1, 0(s0)      # node->value = arr[i]
+    sw s1, 0(s0)      # node->value = array[i]
     sw x0, 4(s0)      # node->next = NULL
     sw s0, 4(t2)      # prev->next = node
     mv t2, s0         # prev = node
     addi s2, s2, 1    
     addi s0, s0, 8    
-    bne s2, t0, loop  # check end condition in while loop
+    bne s2, t0, loop  # check end condition in for loop
 ret:
     lw ra, 0(sp)      # load return address
     lw s1, 4(sp)      # load the address of list head
     addi sp, sp, 8
     jr ra
 # ------ malloc ------
-malloc:     # allocates a1 bytes on the heap, returns pointer to start in a0
+malloc:     # allocates 8 bytes on the heap, returns pointer to start in a0
     addi a0, s0, 8   # move heap limit to current + 8, 4 byte for integer, 4 byte for pointer 
     addi a7, x0, 214 # brk systemcall
     ecall
@@ -110,3 +118,22 @@ remove_head:
     j iterate
 end_iterate:
     jr ra 
+# ------ assert_list ------
+assert_list:
+    la t0, answer
+assert_loop:    
+    beq t1, x0, end_aseert
+    lw a0, 0(t1)   # load value store in node
+    lw a1, 0(t0)   # load value store in answer[i]
+    lw t1, 4(t1)   # load address store in node->next
+    addi t0, t0, 4 # i++
+    beq a0, a1 assert_loop
+    la a0, assert_fail
+    addi a7, x0 4  # print message
+    ecall
+    jr ra
+end_aseert:  
+    la a0, assert_success
+    addi a7, x0 4  # print message
+    ecall 
+    jr ra
